@@ -72,7 +72,7 @@ All configuration comes from environment variables (see `internal/config/config.
 ## Go Client SDK
 
 ```go
-import "github.com/gamp/forgetss/pkg/client"
+import "github.com/ForgeTSS/ForgeTSS/pkg/client"
 
 c := client.New("http://localhost:8080", "your-api-key")
 

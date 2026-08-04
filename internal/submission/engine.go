@@ -10,9 +10,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/gamp/forgetss/internal/channelaccounts"
-	"github.com/gamp/forgetss/internal/config"
-	"github.com/gamp/forgetss/internal/store"
+	"github.com/ForgeTSS/ForgeTSS/internal/channelaccounts"
+	"github.com/ForgeTSS/ForgeTSS/internal/config"
+	"github.com/ForgeTSS/ForgeTSS/internal/store"
 	"github.com/google/uuid"
 	stellar "github.com/stellar/go-stellar-sdk"
 )

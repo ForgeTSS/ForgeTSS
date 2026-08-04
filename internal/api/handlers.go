@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/gamp/forgetss/internal/metrics"
-	"github.com/gamp/forgetss/internal/store"
+	"github.com/ForgeTSS/ForgeTSS/internal/metrics"
+	"github.com/ForgeTSS/ForgeTSS/internal/store"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

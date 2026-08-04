@@ -1,4 +1,4 @@
-module github.com/gamp/forgetss
+module github.com/ForgeTSS/ForgeTSS
 
 go 1.25
 

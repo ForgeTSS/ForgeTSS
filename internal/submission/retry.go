@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/gamp/forgetss/internal/store"
+	"github.com/ForgeTSS/ForgeTSS/internal/store"
 	"github.com/google/uuid"
 	stellar "github.com/stellar/go-stellar-sdk"
 	"github.com/stellar/go-stellar-sdk/pkg/txnbuild"

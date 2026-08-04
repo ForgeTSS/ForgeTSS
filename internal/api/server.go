@@ -9,8 +9,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/gamp/forgetss/internal/config"
-	"github.com/gamp/forgetss/internal/store"
+	"github.com/ForgeTSS/ForgeTSS/internal/config"
+	"github.com/ForgeTSS/ForgeTSS/internal/store"
 )
 
 // Server wraps the HTTP router, HTTP server, and dependency references.

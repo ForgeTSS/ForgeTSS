@@ -8,12 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/gamp/forgetss/internal/api"
-	"github.com/gamp/forgetss/internal/channelaccounts"
-	"github.com/gamp/forgetss/internal/config"
-	"github.com/gamp/forgetss/internal/metrics"
-	"github.com/gamp/forgetss/internal/rpc"
-	"github.com/gamp/forgetss/internal/store"
+	"github.com/ForgeTSS/ForgeTSS/internal/api"
+	"github.com/ForgeTSS/ForgeTSS/internal/channelaccounts"
+	"github.com/ForgeTSS/ForgeTSS/internal/config"
+	"github.com/ForgeTSS/ForgeTSS/internal/metrics"
+	"github.com/ForgeTSS/ForgeTSS/internal/rpc"
+	"github.com/ForgeTSS/ForgeTSS/internal/store"
 )
 
 func main() {
