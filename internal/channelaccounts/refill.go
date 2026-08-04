@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/gamp/forgetss/internal/store"
 	"github.com/stellar/go-stellar-sdk/keypair"
 )
 
@@ -44,10 +43,10 @@ func (p *Pool) refillOne(ctx context.Context) error {
 		return fmt.Errorf("deriving keypair from seed: %w", err)
 	}
 
-	acct := store.ChannelAccount{
+	acct := ChannelAccountRecord{
 		PublicKey:       kp.Address(),
 		EncryptedSecret: kp.Private(),
-		Status:          store.AccountStatusIdle,
+		Status:          AccountStatusIdle,
 		SequenceNumber:  0,
 	}
 
