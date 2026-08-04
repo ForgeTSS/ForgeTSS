@@ -3,8 +3,11 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"sync/atomic"
 
 	stellar "github.com/stellar/go-stellar-sdk"
@@ -22,10 +25,10 @@ const (
 // Router selects the appropriate Stellar backend based on transaction operations
 // and handles failover across configured endpoints.
 type Router struct {
-	horizonClients  []*HorizonClient
-	sorobanClients  []*SorobanClient
-	horizonIdx      atomic.Int64
-	sorobanIdx      atomic.Int64
+	horizonClients []*HorizonClient
+	sorobanClients []*SorobanClient
+	horizonIdx     atomic.Int64
+	sorobanIdx     atomic.Int64
 }
 
 // NewRouter creates a router from lists of Horizon and Soroban endpoint URLs.
@@ -65,12 +68,13 @@ func (r *Router) route(envelopeXDR string) Backend {
 	return BackendHorizon
 }
 
-// SubmitTransaction routes the envelope to the correct backend and submits it.
+// SubmitTransaction routes the envelope to the correct backend and submits it,
+// failing over across endpoints on 5xx or timeout.
 func (r *Router) SubmitTransaction(ctx context.Context, envelopeXDR string) (*stellar.TransactionResult, error) {
 	backend := r.route(envelopeXDR)
 	switch backend {
 	case BackendHorizon:
-		return r.submitHorizon(ctx, envelopeXDR)
+		return r.submitWithFailover(ctx, envelopeXDR)
 	case BackendSoroban:
 		return r.submitSoroban(ctx, envelopeXDR)
 	default:
@@ -78,45 +82,112 @@ func (r *Router) SubmitTransaction(ctx context.Context, envelopeXDR string) (*st
 	}
 }
 
-// GetTransactionStatus routes a status query to the correct backend.
+// GetTransactionStatus queries Horizon for transaction status, with failover.
 func (r *Router) GetTransactionStatus(ctx context.Context, hash string) (*stellar.TransactionResult, error) {
-	// By default we check Horizon; Soroban results also appear there.
-	return r.getHorizonStatus(ctx, hash)
-}
+	for i := 0; i < len(r.horizonClients); i++ {
+		idx := int(r.horizonIdx.Add(1)) % len(r.horizonClients)
+		client := r.horizonClients[idx]
 
-func (r *Router) submitHorizon(ctx context.Context, envelopeXDR string) (*stellar.TransactionResult, error) {
-	idx := int(r.horizonIdx.Add(1)) % len(r.horizonClients)
-	client := r.horizonClients[idx]
-
-	result, err := client.SubmitTransaction(ctx, envelopeXDR)
-	if err != nil {
-		return nil, fmt.Errorf("submitting via horizon (%s): %w", client.baseURL, err)
+		result, err := client.GetTransactionStatus(ctx, hash)
+		if err != nil {
+			if isRetryable(err) {
+				slog.Warn("status query endpoint failed, trying next", "endpoint", client.baseURL, "error", err)
+				continue
+			}
+			return nil, fmt.Errorf("querying horizon (%s): %w", client.baseURL, err)
+		}
+		return result, nil
 	}
-	return result, nil
+	return nil, fmt.Errorf("all horizon endpoints failed for status query of %s", hash)
 }
 
+// submitWithFailover tries each Horizon endpoint in round-robin order, skipping
+// endpoints that return 5xx responses or context deadline exceeded errors.
+func (r *Router) submitWithFailover(ctx context.Context, envelopeXDR string) (*stellar.TransactionResult, error) {
+	for i := 0; i < len(r.horizonClients); i++ {
+		idx := int(r.horizonIdx.Add(1)) % len(r.horizonClients)
+		client := r.horizonClients[idx]
+
+		result, err := client.SubmitTransaction(ctx, envelopeXDR)
+		if err != nil {
+			if isRetryable(err) {
+				slog.Warn("submit endpoint failed, trying next", "endpoint", client.baseURL, "error", err)
+				continue
+			}
+			return nil, fmt.Errorf("submitting via horizon (%s): %w", client.baseURL, err)
+		}
+		return result, nil
+	}
+	return nil, fmt.Errorf("all horizon endpoints failed after %d attempts", len(r.horizonClients))
+}
+
+// submitSoroban simulates then submits via the next available Soroban endpoint.
 func (r *Router) submitSoroban(ctx context.Context, envelopeXDR string) (*stellar.TransactionResult, error) {
-	idx := int(r.sorobanIdx.Add(1)) % len(r.sorobanClients)
-	client := r.sorobanClients[idx]
+	for i := 0; i < len(r.sorobanClients); i++ {
+		idx := int(r.sorobanIdx.Add(1)) % len(r.sorobanClients)
+		client := r.sorobanClients[idx]
 
-	// Simulate first (required for Soroban).
-	sim, err := client.SimulateTransaction(ctx, envelopeXDR)
-	if err != nil {
-		return nil, fmt.Errorf("simulating soroban transaction: %w", err)
-	}
-	_ = sim // Cost details are logged by callers if needed.
+		// Simulate first (required for Soroban).
+		if _, err := client.SimulateTransaction(ctx, envelopeXDR); err != nil {
+			if isRetryable(err) {
+				slog.Warn("sim endpoint failed, trying next", "endpoint", client.baseURL, "error", err)
+				continue
+			}
+			return nil, fmt.Errorf("simulating on soroban (%s): %w", client.baseURL, err)
+		}
 
-	// Submit and map Soroban response to Horizon result for uniformity.
-	resp, err := client.SubmitTransaction(ctx, envelopeXDR)
-	if err != nil {
-		return nil, fmt.Errorf("submitting soroban transaction: %w", err)
+		resp, err := client.SubmitTransaction(ctx, envelopeXDR)
+		if err != nil {
+			if isRetryable(err) {
+				slog.Warn("submit soroban endpoint failed, trying next", "endpoint", client.baseURL, "error", err)
+				continue
+			}
+			return nil, fmt.Errorf("submitting soroban transaction (%s): %w", client.baseURL, err)
+		}
+		_ = resp
+		return nil, fmt.Errorf("soroban submission succeeded")
 	}
-	_ = resp
-	return nil, fmt.Errorf("soroban submission handled (hash available in response)")
+	return nil, fmt.Errorf("all soroban endpoints failed after %d attempts", len(r.sorobanClients))
 }
 
-func (r *Router) getHorizonStatus(ctx context.Context, hash string) (*stellar.TransactionResult, error) {
-	idx := int(r.horizonIdx.Add(1)) % len(r.horizonClients)
-	client := r.horizonClients[idx]
-	return client.GetTransactionStatus(ctx, hash)
+// HorizonClient returns the primary Horizon client (first configured endpoint).
+// Used by the channel account pool for sequence syncing.
+func (r *Router) HorizonClient() *HorizonClient {
+	if len(r.horizonClients) == 0 {
+		return nil
+	}
+	return r.horizonClients[0]
 }
+
+// isRetryable checks if an error is transient (5xx, timeout, network error)
+// and warrants failover to another endpoint.
+func isRetryable(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for HTTP 5xx status codes.
+	var httpErr stellar.HTTPError
+	if errors.As(err, &httpErr) && httpErr.StatusCode >= 500 {
+		return true
+	}
+
+	// Context deadline exceeded (timeout) is retryable.
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	if errors.Is(err, context.Canceled) {
+		return true
+	}
+
+	// Generic network-level errors.
+	if errors.Is(err, io.EOF) {
+		return true
+	}
+
+	return false
+}
+
+// Ensure http and io imports are used.
+var _ = http.StatusOK
+var _ = io.EOF
