@@ -13,16 +13,17 @@ import (
 	"github.com/gamp/forgetss/internal/store"
 )
 
-// Server wraps the HTTP router and the HTTP server instance.
+// Server wraps the HTTP router, HTTP server, and dependency references.
 type Server struct {
 	router *chi.Mux
 	srv    *http.Server
 	cfg    *config.Config
+	store  *store.Store
+	engine  interface{}
 }
 
 // NewServer creates the API server with routing and middleware.
-// It accepts config, store, and any handler dependencies wired in main.
-func NewServer(cfg *config.Config, _ *store.Store, _ interface{}, _ interface{}, _ interface{}) *Server {
+func NewServer(cfg *config.Config, st *store.Store, _ interface{}, _ interface{}, _ interface{}) *Server {
 	r := chi.NewMux()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -30,7 +31,7 @@ func NewServer(cfg *config.Config, _ *store.Store, _ interface{}, _ interface{},
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	srv := &Server{router: r, srv: &http.Server{Addr: cfg.ListenAddr, Handler: r}, cfg: cfg}
+	srv := &Server{router: r, srv: &http.Server{Addr: cfg.ListenAddr, Handler: r}, cfg: cfg, store: st}
 
 	// Public endpoints — no auth required.
 	r.Get("/health", srv.healthHandler)
