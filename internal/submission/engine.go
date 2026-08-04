@@ -12,7 +12,6 @@ import (
 
 	"github.com/gamp/forgetss/internal/channelaccounts"
 	"github.com/gamp/forgetss/internal/config"
-	"github.com/gamp/forgetss/internal/rpc"
 	"github.com/gamp/forgetss/internal/store"
 	"github.com/google/uuid"
 	stellar "github.com/stellar/go-stellar-sdk"
@@ -23,16 +22,32 @@ type Request struct {
 	EnvelopeXDR string
 }
 
+// Submitter abstracts transaction submission via the RPC router.
+type Submitter interface {
+	SubmitTransaction(ctx context.Context, envelopeXDR string) (*stellar.TransactionResult, error)
+}
+
+// TxStore abstracts transaction persistence operations.
+type TxStore interface {
+	SaveTransaction(ctx context.Context, tx store.Transaction) error
+	UpdateTransactionStatus(ctx context.Context, id uuid.UUID, status store.TxStatus, channelAccount string, lastError string) error
+	IncrementRetry(ctx context.Context, id uuid.UUID) error
+	GetPendingTransactions(ctx context.Context, limit int) ([]store.Transaction, error)
+	GetTransaction(ctx context.Context, id uuid.UUID) (store.Transaction, error)
+	GetTransactionForRetry(ctx context.Context, id uuid.UUID) (store.Transaction, error)
+	UpdateSequenceNumber(ctx context.Context, publicKey string, seq int64) error
+}
+
 // Engine manages the transaction submission queue.
 type Engine struct {
-	store    *store.Store
-	router   *rpc.Router
-	pool     *channelaccounts.Pool
-	cfg      *config.Config
+	store  TxStore
+	router Submitter
+	pool   *channelaccounts.Pool
+	cfg    *config.Config
 }
 
 // NewEngine creates a new submission engine.
-func NewEngine(store *store.Store, router *rpc.Router, pool *channelaccounts.Pool, cfg *config.Config) *Engine {
+func NewEngine(store TxStore, router Submitter, pool *channelaccounts.Pool, cfg *config.Config) *Engine {
 	return &Engine{store: store, router: router, pool: pool, cfg: cfg}
 }
 
