@@ -102,4 +102,8 @@ TEST_DATABASE_URL="postgresql://forge:forgepass@localhost:5432/forge?sslmode=dis
 
 ## License
 
-Proprietary.
+Apache License 2.0. See [LICENSE](LICENSE) for full text.
+
+ForgeTSS is derived in part from Stellar Disbursement Platform's
+transaction submission module (also Apache 2.0, Stellar Development
+Foundation).
