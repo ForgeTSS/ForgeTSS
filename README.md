@@ -69,6 +69,11 @@ All configuration comes from environment variables (see `internal/config/config.
 | `REFILL_BATCH_SIZE` | Number of channel accounts to create per refill | `10` |
 | `LOG_LEVEL` | Log level: `debug`, `info`, `warn`, `error` | `info` |
 
+Note: `MASTER_SEED` funds channel account creation and controls real
+Stellar funds. For any non-local deployment, source it from a secrets
+manager (e.g. Vault, AWS Secrets Manager) rather than a plain environment
+variable.
+
 ## Go Client SDK
 
 ```go
