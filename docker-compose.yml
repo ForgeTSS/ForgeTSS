@@ -1,0 +1,40 @@
+# ForgeTSS — local development and testnet deployment.
+services:
+  forge-tss:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      LISTEN_ADDR: ":8080"
+      DATABASE_URL: "postgresql://forge:forgepass@postgres:5432/forge?sslmode=disable"
+      STELLAR_NETWORK: ${STELLAR_NETWORK:-testnet}
+      HORIZON_URL: https://horizon-testnet.stellar.org
+      SOROBAN_RPC_URL: https://soroban-testnet.stellar.org
+      MAX_RETRIES: "${MAX_RETRIES:-5}"
+      RETRY_INTERVAL_MS: "${RETRY_INTERVAL_MS:-5000}"
+      CHANNEL_ACCOUNT_REFILL: "${CHANNEL_ACCOUNT_REFILL:-5}"
+      API_KEYS: "${API_KEYS:-}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: forgepass
+      POSTGRES_DB: forge
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forge"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:
