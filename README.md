@@ -3,6 +3,15 @@
 An independent service that any Stellar payroll, remittance, or batch-payout
 product calls to reliably submit large volumes of transactions.
 
+[![CI](https://github.com/ForgeTSS/ForgeTSS/actions/workflows/ci.yml/badge.svg)](https://github.com/ForgeTSS/ForgeTSS/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![Go Reference](https://pkg.go.dev/badge/github.com/ForgeTSS/ForgeTSS.svg)](https://pkg.go.dev/github.com/ForgeTSS/ForgeTSS)
+![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?logo=go)
+
+| Name | Role | GitHub | Telegram |
+|---|---|---|---|
+| Fuhad | Maintainer | @K1NGD4VID | |
+
 ## Architecture
 
 ForgeTSS owns the full lifecycle of a Stellar transaction:
@@ -105,6 +114,46 @@ docker compose up postgres -d
 TEST_DATABASE_URL="postgresql://forge:forgepass@localhost:5432/forge?sslmode=disable" go test -count=1 ./...
 ```
 
+## Contributing
+
+We welcome contributions. Here is how to get started:
+
+### Finding an Issue
+
+Browse [open issues](https://github.com/ForgeTSS/ForgeTSS/issues) — look for the
+[`good first issue`](https://github.com/ForgeTSS/ForgeTSS/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+label if you are new to the codebase.
+
+### Branch Naming
+
+Use descriptive prefixes for your branches:
+
+| Prefix | Use Case | Example |
+|--------|----------|---------|
+| `feat/` | New feature | `feat/sse-streaming` |
+| `fix/` | Bug fix | `fix/channel-lease-race` |
+| `docs/` | Documentation changes | `docs/api-reference` |
+
+### Commit Format
+
+Follow the established convention:
+
+```
+type(scope): description
+
+feat(api): wire store into handlers — SSE polling
+test(submission): add engine tests covering retry
+docs: fix typo in architecture section
+```
+
+### Pull Request Checklist
+
+- [ ] Tests pass: `go test ./...`
+- [ ] Code builds: `go build ./...`
+- [ ] `golangci-lint` is clean (when installed)
+- [ ] One logical change per commit
+- [ ] PR title follows commit format
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) for full text.
@@ -112,3 +161,5 @@ Apache License 2.0. See [LICENSE](LICENSE) for full text.
 ForgeTSS is derived in part from Stellar Disbursement Platform's
 transaction submission module (also Apache 2.0, Stellar Development
 Foundation).
+
+[![Contributors](https://contrib.rocks/image?repo=ForgeTSS/ForgeTSS)](https://github.com/ForgeTSS/ForgeTSS/graphs/contributors)
